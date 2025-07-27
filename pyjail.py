@@ -92,9 +92,7 @@ def process_input(text):
         return "You aren't getting through that easily, come on.", True
     else:
         try:
-            output = []
-            exec(text, {'globals': globals(), '__builtins__': {}}, {'print': lambda x: output.append(str(x))})
-            return "\n".join(output) if output else "(nothing to display)", False
+            exec(text, {'globals': globals(), '__builtins__': {}}, {'print':print})
         except Exception as e:
             return f"Error: {e}", True
 
