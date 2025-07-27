@@ -1,54 +1,61 @@
-#!/usr/bin/env python3
-
-import socket
+from flask import Flask, request, render_template_string
 import re
-import threading
-import sys
-import os
 
-# Restriction setup
+app = Flask(__name__)
+
 banned = "import|chr|os|sys|system|builtin|exec|eval|subprocess|pty|popen|read|get_data|for|in|join|chr"
 search_func = lambda word: re.compile(r"\b({0})\b".format(word), flags=re.IGNORECASE).search
 
-def handle_client(conn, addr):
-    try:
-        conn.sendall(sys.version.encode() + b"\n")
-        conn.sendall(b"Tell me something\n")
+template = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Ghost_in_the_Jail - Challenge</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #121212; color: #eee; padding: 20px; }
+        input[type=text] { width: 80%; padding: 10px; margin: 10px 0; background: #222; border: none; color: #eee; }
+        input[type=submit] { padding: 10px 20px; background: #007bff; border: none; color: white; cursor: pointer; }
+        .response { margin-top: 20px; padding: 15px; background: #222; border-radius: 5px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Ghost_in_the_Jail</h1>
+    <p>Dis quelque chose au challenge :</p>
+    <form method="POST">
+        <input name="user_input" autocomplete="off" autofocus />
+        <input type="submit" value="Envoyer" />
+    </form>
+    {% if response %}
+    <div class="response">{{ response }}</div>
+    {% endif %}
+</body>
+</html>
+"""
 
-        for _ in range(2):
-            conn.sendall(b">>> ")
-            data = b""
-            while not data.endswith(b"\n"):
-                part = conn.recv(1024)
-                if not part:
-                    return
-                data += part
-            text = data.decode().strip().lower()
-            check = search_func(banned)(''.join(text.split("__")))
-            if check:
-                conn.sendall(f"Stupid, you can't use {check.group(0)}!\n".encode())
-                break
-            if re.match("^(_?[A-Za-z0-9])*[A-Za-z](_?[A-Za-z0-9])*$", text):
-                conn.sendall(b"You aren't getting through that easily, come on.\n")
-                break
-            else:
-                try:
-                    exec(text, {'globals': globals(), '__builtins__': {}}, {'print': lambda *args: conn.sendall(' '.join(map(str, args)).encode() + b"\n")})
-                except Exception as e:
-                    conn.sendall(f"Error: {str(e)}\n".encode())
-    finally:
-        conn.close()
+def process_input(text):
+    text = text.lower()
+    check = search_func(banned)(''.join(text.split("__")))
+    if check:
+        return f"Stupid, you can't use {check.group(0)}!"
+    if re.match("^(_?[A-Za-z0-9])*[A-Za-z](_?[A-Za-z0-9])*$", text):
+        return "You aren't getting through that easily, come on."
+    else:
+        try:
+            # On capture le print dans une liste pour afficher ensuite
+            output = []
+            exec(text, {'globals': globals(), '__builtins__': {}}, {'print': lambda x: output.append(str(x))})
+            return "\n".join(output) if output else "(rien à afficher)"
+        except Exception as e:
+            return f"Error: {e}"
 
-def main():
-    host = "0.0.0.0"
-    port = int(os.environ.get("PORT", 1337))
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((host, port))
-        s.listen(5)
-        print(f"Challenge running on port {port}...")
-        while True:
-            conn, addr = s.accept()
-            threading.Thread(target=handle_client, args=(conn, addr)).start()
+@app.route("/", methods=["GET", "POST"])
+def index():
+    response = None
+    if request.method == "POST":
+        user_input = request.form.get("user_input", "")
+        response = process_input(user_input)
+    return render_template_string(template, response=response)
 
 if __name__ == "__main__":
-    main()
+    app.run(host="0.0.0.0", port=3000)
