@@ -4,6 +4,7 @@ import socket
 import re
 import threading
 import sys
+import os
 
 # Restriction setup
 banned = "import|chr|os|sys|system|builtin|exec|eval|subprocess|pty|popen|read|get_data|for|in|join|chr"
@@ -40,7 +41,7 @@ def handle_client(conn, addr):
 
 def main():
     host = "0.0.0.0"
-    port = 1337
+    port = int(os.environ.get("PORT", 1337))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, port))
         s.listen(5)
