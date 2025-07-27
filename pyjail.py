@@ -1,5 +1,9 @@
 from flask import Flask, request, render_template_string
 import re
+from sys import modules
+
+modules.clear()
+del modules
 
 app = Flask(__name__)
 
