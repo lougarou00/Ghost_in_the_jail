@@ -7,6 +7,7 @@ RUN pip install Flask
 
 # Copier le script Python dans le container
 COPY pyjail.py /app/pyjail.py
+COPY ghost* /app/
 
 # Définir le dossier de travail
 WORKDIR /app
